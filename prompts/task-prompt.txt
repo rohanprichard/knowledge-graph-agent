@@ -1,6 +1,0 @@
-Analyze the following text, and extract all the information from this conversation that you can.
-
-Text:
-{text}
-
-Output:
