@@ -1,0 +1,7 @@
+openai 
+pydantic 
+python-dotenv 
+instructor 
+graphviz 
+eval_type_backport 
+rich 
