@@ -3,5 +3,6 @@ pydantic
 python-dotenv 
 instructor 
 graphviz 
+pyvis
 eval_type_backport 
 rich 

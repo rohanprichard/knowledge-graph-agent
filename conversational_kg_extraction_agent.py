@@ -1,6 +1,7 @@
 import os
 import json
 import rich
+from rich.console import Console
 import openai
 import uuid
 import instructor
@@ -46,20 +47,25 @@ class InferenceResponse(BaseModel):
 with open("assets/prompts/task-prompt.txt", "r") as file:
     task_prompt = file.read()
 
-console = rich.console.Console()
+console = Console()
+
+console.print("\n\n\n")
 console.rule("[bold green]Task Prompt[/bold green]")
 console.print(task_prompt)
 console.rule()
 console.print("\n\n\n")
 
-print("Hi! What's your name?")
+console.print("\n[bold green]Emma:[/bold green] Hi! What's your name?")
 name = input("You: ")
+console.print(f"\n[bold green]Emma:[/bold green] Hi, {name}! How can I help you today?")
 
 user = Node(id=str(uuid.uuid4()), label=name, entity_type="person")
 knowledge_graph = Graph(nodes=[user], edges=[])
 
 
+
 client = instructor.from_openai(openai.OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com/v1"))
+
 
 def get_response(text: str):
     response = client.completions.create(
@@ -94,17 +100,16 @@ def visualize_graph(graph: Graph):
     output_file = "knowledge_graph.html"
     net.save_graph(output_file)
 
-
-
 def main_loop():
     while True:
-        user_input = input("You: ")
+        user_input = console.input("\n[bold blue]You: [/bold blue]")
         if user_input == "/exit":
             break
-        console.print(f"\n\n[bold blue]{user_input}[/bold blue] \n\n")
+        
         response = get_response(user_input)
-        print("Emma: ", response.response)
+        console.print(f"\n[bold green]Emma: {response.response} [/bold green]")
         knowledge_graph.nodes.extend(response.new_nodes)
         knowledge_graph.edges.extend(response.new_edges)
+        visualize_graph(knowledge_graph)
 
 main_loop()
