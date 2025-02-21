@@ -6,7 +6,7 @@ import openai
 import uuid
 import instructor
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict, Sequence
 from dotenv import load_dotenv
 import requests
 from pyvis.network import Network
@@ -42,6 +42,7 @@ class InferenceResponse(BaseModel):
     response: str
     new_nodes: List[Node]
     new_edges: List[Edge]
+    deleted_items: List[str]
 
 
 with open("assets/prompts/task-prompt.txt", "r") as file:
@@ -55,6 +56,8 @@ console.print(task_prompt)
 console.rule()
 console.print("\n\n\n")
 
+
+
 console.print("\n[bold green]Emma:[/bold green] Hi! What's your name?")
 name = input("You: ")
 console.print(f"\n[bold green]Emma:[/bold green] Hi, {name}! How can I help you today?")
@@ -63,21 +66,28 @@ user = Node(id=str(uuid.uuid4()), label=name, entity_type="person")
 knowledge_graph = Graph(nodes=[user], edges=[])
 
 
-
 client = instructor.from_openai(openai.OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com/v1"))
 
 
-def get_response(text: str):
+def format_graph(graph: Graph):
+    return graph.model_dump_json()
+
+
+def get_response(all_messages: Sequence[Dict[str, str]]) -> InferenceResponse:
+    messages = [{"role": "system", "content": task_prompt.format(graph=format_graph(knowledge_graph))}]
+    for message in all_messages:
+        if message["role"] == "user":
+            messages.append({"role": "user", "content": message["content"]})
+        else:
+            messages.append({"role": "assistant", "content": message["content"]})
     response = client.completions.create(
         model="deepseek-chat",
-        messages=[
-        {"role": "system", "content": task_prompt.format(graph=knowledge_graph)},
-        {"role": "user", "content": text},
-        ],
+        messages=messages,  # type: ignore
         stream=False,
         response_model=InferenceResponse
-        )
+        ) # type: ignore
     return response
+
 
 def visualize_graph(graph: Graph):
     nodes = graph.nodes
@@ -100,16 +110,35 @@ def visualize_graph(graph: Graph):
     output_file = "knowledge_graph.html"
     net.save_graph(output_file)
 
+
 def main_loop():
+    messages = []
     while True:
-        user_input = console.input("\n[bold blue]You: [/bold blue]")
+        user_input = input("You: ")
+
         if user_input == "/exit":
             break
-        
-        response = get_response(user_input)
-        console.print(f"\n[bold green]Emma: {response.response} [/bold green]")
+        if user_input == "":
+            continue
+
+        messages.append({"role": "user", "content": user_input})
+        response = get_response(messages)
+
+        console.print("Emma: ", response.response)
+        messages.append({"role": "assistant", "content": response.response})
+
         knowledge_graph.nodes.extend(response.new_nodes)
         knowledge_graph.edges.extend(response.new_edges)
+
+        for node_id in response.deleted_items:
+            for node in knowledge_graph.nodes:
+                if node.id == node_id:
+                    knowledge_graph.nodes.remove(node)
+    
+        for edge in knowledge_graph.edges:
+            if edge.source.id in response.deleted_items or edge.target.id in response.deleted_items:
+                knowledge_graph.edges.remove(edge)  
+
         visualize_graph(knowledge_graph)
 
 main_loop()
