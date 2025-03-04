@@ -58,9 +58,9 @@ console.print("\n\n\n")
 
 
 
-console.print("\n[bold green]Emma:[/bold green] Hi! What's your name?")
+console.print("\n[bold green]Emma:[/bold green] Hi there! What's your name?")
 name = input("You: ")
-console.print(f"\n[bold green]Emma:[/bold green] Hi, {name}! How can I help you today?")
+console.print(f"\n[bold green]Emma:[/bold green] Hey, {name}! How can I help you today?")
 
 user = Node(id=str(uuid.uuid4()), label=name, entity_type="person")
 knowledge_graph = Graph(nodes=[user], edges=[])
